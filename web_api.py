@@ -6,6 +6,11 @@ from dotenv import load_dotenv
 import logging
 from bs4 import BeautifulSoup
 import re
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import signal
+import ssl
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -13,7 +18,14 @@ logger = logging.getLogger(__name__)
 
 # Inisialisasi Flask
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://*.up.railway.app", "https://lintasai.com"]}})
+
+# Konfigurasi CORS dengan logging
+CORS(app, resources={r"/*": {
+    "origins": ["https://lintasai.com", "https://web-production-a20a.up.railway.app"],
+    "methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization"]
+}})
+logger.info("CORS configured for origins: https://lintasai.com, https://web-production-a20a.up.railway.app")
 
 # Load API Key dari .env
 load_dotenv()
@@ -51,15 +63,30 @@ def extract_text_from_url(url):
         logger.error(f"Gagal mengekstrak teks dari URL: {str(e)}")
         return None
 
+# Tangani sinyal abort untuk logging
+def handle_abort_signal(signum, frame):
+    logger.error(f"Received signal {signum}, aborting worker")
+    raise SystemExit(f"Worker aborted with signal {signum}")
+
+signal.signal(signal.SIGABRT, handle_abort_signal)
+
 # Route untuk menyajikan halaman utama
 @app.route('/')
 def home():
+    logger.info("Serving home page")
     return send_file('web-summarize-ai.html')
+
+# Route untuk menangani preflight OPTIONS secara eksplisit
+@app.route('/summarize', methods=['OPTIONS'])
+def handle_options():
+    logger.info("Handling OPTIONS request for /summarize")
+    return jsonify({"status": "ok"}), 200
 
 # Route untuk ringkasan
 @app.post('/summarize')
 def summarize():
     try:
+        logger.info(f"Received {request.method} request to /summarize from {request.origin}")
         data = request.get_json()
         logger.info(f"Data diterima: {data}")
 
@@ -81,15 +108,16 @@ def summarize():
 
         logger.info(f"Jumlah kata teks: {len(content.split())}")
 
-        if len(content.split()) > 10000:
-            content = " ".join(content.split()[:10000])
-            logger.warning("Teks dipotong menjadi 10.000 kata")
+        # Batasi teks ke 300 kata untuk mempercepat pemrosesan
+        if len(content.split()) > 300:
+            content = " ".join(content.split()[:300])
+            logger.warning("Teks dipotong menjadi 300 kata untuk optimasi")
 
         if not api_key:
             logger.error("API Key OpenRouter tidak ditemukan di environment!")
             return jsonify({"error": "API Key tidak tersedia"}), 500
 
-        prompt = f"Tolong buatkan ringkasan dalam bentuk poin-poin kesimpulan dari isi website berikut dalam bahasa Indonesia:\n\n{content}"
+        prompt = f"Tolong buatkan ringkasan dalam bentuk poin-poin dan paragraf kesimpulan dari isi website berikut dalam bahasa Indonesia:\n\n{content}"
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -99,15 +127,41 @@ def summarize():
         }
 
         payload = {
-            "model": "deepseek/deepseek-chat-v3-0324:free",
+            "model": "microsoft/phi-4-reasoning-plus:free",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant that summarizes website content."},
                 {"role": "user", "content": prompt}
             ]
         }
 
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-        logger.info(f"Status code dari OpenRouter: {response.status_code}")
+        # Setup retry untuk permintaan OpenRouter
+        session = requests.Session()
+        retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        session.mount("https://", HTTPAdapter(max_retries=retries))
+
+        # Tambahkan timeout dan logging waktu
+        start_time = time.time()
+        try:
+            response = session.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=60  # Timeout 60 detik untuk OpenRouter
+            )
+            elapsed_time = time.time() - start_time
+            logger.info(f"OpenRouter respons dalam {elapsed_time:.2f} detik, status: {response.status_code}")
+        except requests.exceptions.Timeout:
+            logger.error("Permintaan ke OpenRouter timeout setelah 60 detik")
+            return jsonify({"error": "Permintaan ke layanan AI timeout. Coba lagi nanti."}), 504
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Koneksi ke OpenRouter gagal: {str(e)}")
+            return jsonify({"error": "Gagal menghubungi layanan AI karena masalah koneksi."}), 503
+        except requests.exceptions.SSLError as e:
+            logger.error(f"SSL error saat menghubungi OpenRouter: {str(e)}")
+            return jsonify({"error": "Gagal menghubungi layanan AI karena masalah SSL."}), 503
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Gagal menghubungi OpenRouter: {str(e)}")
+            return jsonify({"error": f"Gagal menghubungi layanan AI: {str(e)}"}), 503
 
         if response.status_code != 200:
             logger.error(f"Error dari OpenRouter: {response.status_code} - {response.text}")
@@ -116,6 +170,7 @@ def summarize():
         try:
             result = response.json()
             summary = result["choices"][0]["message"]["content"]
+            logger.info("Successfully generated summary")
             return jsonify({"summary": summary})
         except Exception as e:
             logger.error(f"Gagal parsing JSON dari OpenRouter: {str(e)}")
