@@ -1,1 +1,7 @@
-flask==2.2.5 flask-cors==5.0.1 gunicorn==23.0.0 requests==2.32.3 python-dotenv==1.0.1 bs4==0.0.2 beautifulsoup4==4.12.3
+flask==2.2.5
+flask-cors==5.0.1
+gunicorn==23.0.0
+requests==2.32.3
+python-dotenv==1.0.1
+bs4==0.0.2
+beautifulsoup4==4.12.3
