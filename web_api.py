@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Inisialisasi Flask
 app = Flask(__name__)
 
-# Konfigurasi CORS dengan logging
+# Konfigurasi CORS
 CORS(app, resources={r"/*": {
     "origins": ["https://lintasai.com", "https://web-production-a20a.up.railway.app"],
     "methods": ["GET", "POST", "OPTIONS"],
@@ -76,7 +76,7 @@ def home():
     logger.info("Serving home page")
     return send_file('web-summarize-ai.html')
 
-# Route untuk menangani preflight OPTIONS secara eksplisit
+# Route untuk menangani preflight OPTIONS
 @app.route('/summarize', methods=['OPTIONS'])
 def handle_options():
     logger.info("Handling OPTIONS request for /summarize")
@@ -132,7 +132,7 @@ def summarize():
         }
 
         payload = {
-            "model": "microsoft/phi-4-reasoning-plus:free",
+            "model": "deepseek/deepseek-r1:free",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant that summarizes website content."},
                 {"role": "user", "content": prompt}
@@ -151,7 +151,7 @@ def summarize():
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=60  # Timeout 60 detik untuk OpenRouter
+                timeout=60
             )
             elapsed_time = time.time() - start_time
             logger.info(f"OpenRouter respons dalam {elapsed_time:.2f} detik, status: {response.status_code}")
@@ -174,8 +174,19 @@ def summarize():
 
         try:
             result = response.json()
-            summary = result["choices"][0]["message"]["content"]
-            logger.info(f"Raw OpenRouter output: {summary[:200]}...")  # Log 200 karakter pertama
+            logger.info(f"Raw OpenRouter JSON response: {result}")
+            # Coba format standar OpenAI
+            if "choices" in result and result["choices"]:
+                summary = result["choices"][0]["message"]["content"]
+            # Coba format alternatif
+            elif "content" in result:
+                summary = result["content"]
+            # Coba format lain
+            elif "message" in result and "content" in result["message"]:
+                summary = result["message"]["content"]
+            else:
+                raise KeyError("No valid content found in JSON response")
+            logger.info(f"Extracted summary: {summary[:200]}...")
             return jsonify({"summary": summary})
         except Exception as e:
             logger.error(f"Gagal parsing JSON dari OpenRouter: {str(e)}")
