@@ -89,7 +89,7 @@ def summarize():
             logger.error("API Key OpenRouter tidak ditemukan di environment!")
             return jsonify({"error": "API Key tidak tersedia"}), 500
 
-        prompt = f"Tolong buatkan ringkasan dalam bentuk poin-poin dan diakhiri dengan paragraf kesimpulan dari isi website berikut dalam bahasa Indonesia:\n\n{content}"
+        prompt = f"Tolong buatkan ringkasan dalam bentuk poin-poin dan paragraf kesimpulan dari isi website berikut dalam bahasa Indonesia:\n\n{content}"
 
         headers = {
             "Authorization": f"Bearer {api_key}",
