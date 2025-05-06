@@ -117,7 +117,12 @@ def summarize():
             logger.error("API Key OpenRouter tidak ditemukan di environment!")
             return jsonify({"error": "API Key tidak tersedia"}), 500
 
-        prompt = f"Tolong buatkan ringkasan dalam bentuk poin-poin dan paragraf kesimpulan dari isi website berikut dalam bahasa Indonesia:\n\n{content}"
+        prompt = f"""
+        Tolong buatkan ringkasan dalam bentuk poin-poin dan paragraf kesimpulan dari isi website berikut dalam bahasa Indonesia. 
+        Hanya berikan ringkasan dalam format poin-poin dan paragraf kesimpulan, tanpa penjelasan proses pemikiran, langkah-langkah, atau informasi tambahan lainnya:
+        
+        {content}
+        """
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -127,7 +132,7 @@ def summarize():
         }
 
         payload = {
-            "model": "google/gemini-2.0-flash-exp:free",
+            "model": "microsoft/phi-4-reasoning-plus:free",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant that summarizes website content."},
                 {"role": "user", "content": prompt}
@@ -170,7 +175,7 @@ def summarize():
         try:
             result = response.json()
             summary = result["choices"][0]["message"]["content"]
-            logger.info("Successfully generated summary")
+            logger.info(f"Raw OpenRouter output: {summary[:200]}...")  # Log 200 karakter pertama
             return jsonify({"summary": summary})
         except Exception as e:
             logger.error(f"Gagal parsing JSON dari OpenRouter: {str(e)}")
