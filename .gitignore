@@ -1,0 +1,36 @@
+# File lingkungan
+.env
+
+# File Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# File sementara
+*.log
+*.cache
+*.bak
+*.swp
+*~
+
+# Direktori build
+dist/
+build/
+*.egg-info/
+
+# File IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# File sistem
+.DS_Store
+Thumbs.db

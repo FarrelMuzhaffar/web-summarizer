@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lintas AI - Web Summarizer</title>
+<style>
+:root {
+    --primary-color: #10A37F;
+    --secondary-color: #0D8A6F;
+    --text-color: #343541;
+    --text-secondary: #6e6e80;
+    --background-light: #ffffff;
+    --background-dark: #202123;
+    --gray-100: #f7f7f8;
+    --gray-200: #ececf1;
+    --gray-300: #d9d9e3;
+    --gray-400: #acacbe;
+    --gray-500: #8e8ea0;
+    --gray-600: #565869;
+    --gray-700: #40414f;
+    --gray-800: #343541;
+    --gray-900: #202123;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --sidebar-width: 260px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--background-light);
+    color: var(--text-color);
+    font-size: 16px;
+    line-height: 1.5;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    --text-color: #d1d5db;
+    --text-secondary: #9ca3af;
+    background-color: var(--background-dark);
+}
+
+body.dark-mode #text-generator-container {
+    background-color: var(--background-dark);
+}
+
+body.dark-mode #sidebar {
+    background-color: var(--gray-900);
+    border-right: 1px solid var(--gray-700);
+}
+
+body.dark-mode .input-wrapper {
+    background-color: var(--gray-800);
+    border: 1px solid var(--gray-700);
+}
+
+body.dark-mode #webUrlInput {
+    background-color: var(--gray-800);
+    color: var(--text-color);
+}
+
+body.dark-mode .example-card {
+    background-color: var(--gray-800);
+    border: 1px solid var(--gray-700);
+}
+
+body.dark-mode .message {
+    background-color: var(--gray-800);
+    border: 1px solid var(--gray-700);
+}
+
+body.dark-mode .user-message .message {
+    background-color: var(--gray-700);
+}
+
+body.dark-mode #rename-dialog > div {
+    background-color: var(--gray-800);
+    color: var(--text-color);
+}
+
+body.dark-mode #rename-input {
+    background-color: var(--gray-700);
+    color: var(--text-color);
+    border-color: var(--gray-600);
+}
+
+body.dark-mode #rename-cancel {
+    background-color: var(--gray-700);
+    color: var(--text-color);
+}
+
+/* Main Layout */
+#text-generator-container {
+    display: flex;
+    height: 100vh;
+    position: relative;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+    z-index: 1001;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    transition: left 0.3s ease, background-color 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .sidebar-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#sidebar.sidebar-hidden + .sidebar-toggle {
+    left: 16px;
+}
+
+#sidebar:not(.sidebar-hidden) + .sidebar-toggle {
+    left: calc(var(--sidebar-width) + 16px);
+}
+
+/* Sidebar Styles */
+#sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--gray-100);
+    border-right: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+}
+
+#sidebar.sidebar-hidden {
+    transform: translateX(-100%);
+}
+
+.sidebar-top {
+    margin-bottom: 24px;
+}
+
+.new-chat-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.new-chat-button:hover {
+    background-color: var(--secondary-color);
+}
+
+.sidebar-section {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sidebar-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    padding-left: 4px;
+}
+
+.chat-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-history-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+
+.chat-history-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .chat-history-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.chat-history-item.active {
+    background-color: rgba(16, 163, 127, 0.1);
+}
+
+.chat-icon {
+    margin-right: 12px;
+    color: var(--gray-500);
+}
+
+.chat-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+}
+
+.chat-actions {
+    display: none;
+    position: absolute;
+    right: 12px;
+    gap: 8px;
+}
+
+.chat-history-item:hover .chat-actions {
+    display: flex;
+}
+
+.chat-action-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--gray-500);
+    padding: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.chat-action-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: var(--gray-700);
+}
+
+body.dark-mode .chat-action-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--gray-300);
+}
+
+.sidebar-footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-200);
+}
+
+body.dark-mode .sidebar-footer {
+    border-top-color: var(--gray-700);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-md);
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--gray-200);
+    margin-right: 12px;
+}
+
+body.dark-mode .user-avatar {
+    background-color: var(--gray-700);
+}
+
+.sidebar-button {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    gap: 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.sidebar-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .sidebar-button:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Main Content Area */
+#main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: var(--sidebar-width);
+    transition: margin-left 0.3s ease;
+}
+
+#sidebar.sidebar-hidden + .sidebar-toggle + #main-content {
+    margin-left: 0;
+}
+
+#conversation-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 16px;
+    padding-bottom: 80px;
+    min-height: 0;
+}
+
+/* Welcome Message Styles */
+#welcome-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 32px 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.welcome-logo {
+    margin-bottom: 24px;
+    max-width: 50px;
+}
+
+#welcome-message h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-color);
+}
+
+.welcome-description {
+    margin-bottom: 32px;
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 600px;
+}
+
+.example-prompts {
+    width: 100%;
+    max-width: 1200px;
+}
+
+.examples-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.example-card {
+    flex: 1;
+    background-color: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    min-width: 200px;
+    max-width: 300px;
+    min-height: 60px;
+}
+
+.example-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.example-icon {
+    margin-right: 12px;
+    color: var(--primary-color);
+}
+
+ EXAMPLE-CARD P {
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Input Area Styles */
+#input-container {
+    position: sticky;
+    bottom: 0;
+    background-color: var(--background-light);
+    padding: 16px 16px 24px 16px;
+    border-top: 1px solid var(--gray-200);
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+    width: 100%;
+    z-index: 10;
+}
+
+body.dark-mode #input-container {
+    border-top-color: var(--gray-700);
+    background-color: var(--background-dark);
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    background-color: var(--background-light);
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+    max-width: 800px;
+    margin: 0 auto;
+    width: calc(100% - 32px);
+}
+
+body.dark-mode .input-wrapper {
+    background-color: var(--gray-800);
+}
+
+.input-wrapper:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+}
+
+#webUrlInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 14px 16px;
+    font-size: 16px;
+    background: transparent;
+    color: var(--text-color);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    min-width: 0;
+}
+
+#webUrlInput::placeholder {
+    color: var(--gray-500);
+}
+
+#summarizeBtn {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+    flex-shrink: 0;
+}
+
+#summarizeBtn:hover {
+    color: var(--secondary-color);
+}
+
+#summarizeBtn:disabled {
+    color: var(--gray-400);
+    cursor: not-allowed;
+}
+
+.input-footer {
+    font-size: 12px;
+    color: var(--gray-500);
+    text-align: center;
+    margin-top: 8px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Message Styles */
+.message-wrapper {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.message {
+    max-width: 800px;
+    width: 100%;
+    background-color: var(--background-light);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-200);
+    font-weight: 500;
+}
+
+body.dark-mode .message-header {
+    border-bottom-color: var(--gray-700);
+}
+
+.ai-icon,
+.user-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.ai-icon {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.user-icon {
+    background-color: var(--gray-200);
+    color: var(--gray-700);
+}
+
+body.dark-mode .user-icon {
+    background-color: var(--gray-700);
+    color: var(--gray-300);
+}
+
+.message-content {
+    padding: 16px;
+    line-height: 1.6;
+}
+
+.message-content h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.message-content h3 {
+    font-size: 16px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.message-content p {
+    margin-bottom: 12px;
+}
+
+.message-content ul,
+.message-content ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+}
+
+.message-content li {
+    margin-bottom: 4px;
+}
+
+.message-content code {
+    background-color: var(--gray-100);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 90%;
+}
+
+body.dark-mode .message-content code {
+    background-color: var(--gray-700);
+}
+
+.message-content pre {
+    background-color: var(--gray-100);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    margin-bottom: 16px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 14px;
+}
+
+body.dark-mode .message-content pre {
+    background-color: var(--gray-700);
+}
+
+.user-message .message {
+    background-color: var(--gray-100);
+}
+
+/* About AI Content */
+#about-ai-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Loader */
+.loader {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.loader:after {
+    content: " ";
+    display: block;
+    width: 32px;
+    height: 32px;
+    margin: 4px;
+    border-radius: 50%;
+    border: 6px solid var(--primary-color);
+    border-color: var(--primary-color) transparent var(--primary-color) transparent;
+    animation: loader 1.2s linear infinite;
+}
+
+@keyframes loader {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Modal Styles */
+#rename-dialog > div {
+    background: var(--background-light);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    width: 300px;
+    max-width: 90%;
+    box-shadow: var(--shadow-lg);
+}
+
+#rename-input {
+    width: 100%;
+    padding: 10px 12px;
+    margin: 10px 0;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#rename-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+}
+
+#rename-cancel,
+#rename-confirm {
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+#rename-cancel {
+    background-color: var(--gray-200);
+    color: var(--text-color);
+}
+
+#rename-cancel:hover {
+    background-color: var(--gray-300);
+}
+
+#rename-confirm {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#rename-confirm:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    #text-generator-container {
+        flex-direction: column;
+    }
+
+    #sidebar {
+        width: var(--sidebar-width);
+        transform: translateX(-100%);
+    }
+
+    #sidebar:not(.sidebar-hidden) {
+        transform: translateX(0);
+    }
+
+    #main-content {
+        margin-left: 0;
+    }
+
+    #sidebar:not(.sidebar-hidden) + .sidebar-toggle + #main-content {
+        margin-left: 0;
+    }
+
+    .sidebar-toggle {
+        left: 16px;
+    }
+
+    .sidebar-section {
+        max-height: calc(100vh - 200px);
+    }
+
+    #welcome-message {
+        padding: 16px 16px;
+    }
+
+    .welcome-logo {
+        margin-bottom: 16px;
+        max-width: 50px
+    }
+
+    #welcome-message h1 {
+        font-size: 24px;
+        margin-bottom: 12px;
+    }
+
+    .welcome-description {
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+
+    .examples-row {
+        flex-direction: column;
+    }
+
+    .example-card {
+        margin-bottom: 8px;
+        max-width: none;
+        min-width: 0;
+        min-height: 50px;
+    }
+
+    .message {
+        border-radius: var(--radius-md);
+    }
+
+    .message-content {
+        padding: 12px;
+    }
+
+    #input-container {
+        padding: 16px 16px 24px 16px;
+    }
+
+    .input-wrapper {
+        width: calc(100% - 32px);
+        max-width: none;
+    }
+
+    #conversation-container {
+        padding-bottom: 60px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #about-ai-content {
+        padding: 16px;
+    }
+}
+
+/* Notification Styles */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 1000;
+}
+</style>
+
+
+
+
+
+    
+</head>
+<body>
+    <div id="text-generator-container">
+        <!-- Sidebar Toggle Button -->
+        <button id="sidebar-toggle" class="sidebar-toggle">
+            <svg id="menu-icon" xmlns="https://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+            </svg>
+            <svg id="close-icon" xmlns="https://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16" style="display: none;">
+                <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854z"/>
+            </svg>
+        </button>
+
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-top">
+                <h2 style="color: #10A37F; text-align: center; margin-bottom: 10px;">Lintas AI</h2>
+                <button id="startNewSessionBtn" class="new-chat-button">
+                    <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                    </svg>
+                    <span>Chat baru</span>
+                </button>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>Riwayat percakapan</h3>
+                <div id="sessionList" class="chat-history-list"></div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <svg xmlns="https://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                        </svg>
+                    </div>
+                    <span>Web Summarizer AI</span>
+                </div>
+                
+                <div class="sidebar-button" id="about-ai-button">
+                    <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                    </svg>
+                    <span>Tentang AI</span>
+                </div>
+                
+                <div class="sidebar-button" id="theme-toggle">
+                    <svg id="dark-icon" xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
+                    </svg>
+                    <svg id="light-icon" xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="display: none;">
+                        <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+                    </svg>
+                    <span>Mode gelap</span>
+                </div>
+                
+                <div class="sidebar-button" id="home-button">
+                    <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.707 1.5Z"/>
+                        <path d="m8 3.293 6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293l6-6Z"/>
+                    </svg>
+                    <span>Kembali ke halaman utama</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content">
+            <div id="conversation-container"></div>
+            
+            <div id="welcome-message">
+                <div class="welcome-logo">
+                    <img src="https://solusiai.free.nf/wp-content/uploads/2025/05/1746257506975.png">
+                </div>
+                <h1>Selamat datang di Web Summarizer AI</h1>
+                <div class="welcome-description">
+                    <p>Gunakan AI pintar ini untuk mendapatkan rangkuman konten website dalam bentuk poin-poin yang jelas dan ringkas dalam bahasa Indonesia</p>
+                </div>
+                
+                <div class="example-prompts">
+                    <div class="examples-row">
+                        <div class="example-card">
+                            <div class="example-icon">
+                                <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 0a8 8 0 0 0-8 8 8 8 0 0 0 4 6.93V8h2V6H4V4h3V2H4a6 6 0 0 1 12 0h-3v2h3v2h-2v2h2v2H8v2.07A8 8 0 0 0 8 0z"/>
+                                </svg>
+                            </div>
+                            <p>"https://www.example.com/article1"</p>
+                        </div>
+                        <div class="example-card">
+                            <div class="example-icon">
+                                <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 0a8 8 0 0 0-8 8 8 8 0 0 0 4 6.93V8h2V6H4V4h3V2H4a6 6 0 0 1 12 0h-3v2h3v2h-2v2h2v2H8v2.07A8 8 0 0 0 8 0z"/>
+                                </svg>
+                            </div>
+                            <p>"https://www.example.com/article2"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="loading" class="loader" style="display: none;"></div>
+            
+            <!-- About AI content -->
+            <div id="about-ai-content" style="display: none;">
+                <div class="message-wrapper ai-message">
+                    <div class="message">
+                        <div class="message-header">
+                            <div class="ai-icon">
+                                <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+                                </svg>
+                            </div>
+                            <span>Lintas AI</span>
+                        </div>
+                        <div class="message-content">
+                            <h2>Web Summarizer AI</h2>
+                            <p>Adalah layanan kecerdasan buatan yang dirancang untuk merangkum konten website dalam bentuk poin-poin yang ringkas dan mudah dipahami dalam bahasa Indonesia.</p>
+                            
+                            <h3>Fitur Utama:</h3>
+                            <p>1. <strong>Rangkuman Otomatis</strong> - Dapatkan ringkasan konten website dalam bahasa Indonesia.</p>
+                            <p>2. <strong>Format Poin-poin</strong> - Rangkuman disajikan dalam format yang jelas dan terstruktur.</p>
+                            <p>3. <strong>Penyimpanan Riwayat</strong> - Simpan riwayat rangkuman untuk referensi di masa depan.</p>
+                            <p>4. <strong>Antarmuka Intuitif</strong> - Mudah digunakan dengan desain yang responsif.</p>
+                            
+                            <h3>Cara Menggunakan:</h3>
+                            <p>Masukkan URL website di kolom input, lalu klik tombol kirim untuk mendapatkan rangkuman.</p>
+                            
+                            <h3>Perhatian:</h3>
+                            <p>Rangkuman dihasilkan berdasarkan teks yang diekstrak dari website. Pastikan website memiliki konten teks yang cukup. Verifikasi informasi penting dengan sumber aslinya, karena AI dapat membuat kesalahan.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="input-container">
+                <div class="input-wrapper">
+                    <input type="text" id="webUrlInput" placeholder="Masukkan URL website..." />
+                    <button id="summarizeBtn">
+                        <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15a.5.5 0 0 0-.149-.149z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-footer">AI dapat membuat kesalahan. Periksa informasi penting.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Dialog Modal -->
+    <div id="rename-dialog" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 20px; border-radius: 8px; width: 300px; max-width: 90%;">
+            <h3 style="margin-top: 0; color: #333;">Ubah Nama Percakapan</h3>
+            <input type="text" id="rename-input" style="width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;" placeholder="Nama baru...">
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <button id="rename-cancel" style="background: #f1f1f1; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Batal</button>
+                <button id="rename-confirm" style="background: #10A37F; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const webUrlInput = document.getElementById('webUrlInput');
+    const summarizeButton = document.getElementById('summarizeBtn');
+    const conversationContainer = document.getElementById('conversation-container');
+    const welcomeMessage = document.getElementById('welcome-message');
+    const historyList = document.getElementById('sessionList');
+    const loadingIndicator = document.getElementById('loading');
+    const newChatButton = document.querySelector('.new-chat-button');
+    const aboutAiButton = document.getElementById('about-ai-button');
+    const aboutAiContent = document.getElementById('about-ai-content');
+    const themeToggle = document.getElementById('theme-toggle');
+    const darkIcon = document.getElementById('dark-icon');
+    const lightIcon = document.getElementById('light-icon');
+    const homeButton = document.getElementById('home-button');
+    const renameDialog = document.getElementById('rename-dialog');
+    const renameInput = document.getElementById('rename-input');
+    const renameCancel = document.getElementById('rename-cancel');
+    const renameConfirm = document.getElementById('rename-confirm');
+    const exampleCards = document.querySelectorAll('.example-card');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const menuIcon = document.getElementById('menu-icon');
+    const closeIcon = document.getElementById('close-icon');
+
+    // API URL
+    const API_URL = "https://web-production-bd19.up.railway.app/summarize";
+
+    // State variables
+    let conversations = loadConversations();
+    let currentConversationId = null;
+    let currentRenameId = null;
+    let isAboutAiOpen = false;
+
+    // Initialize the app
+    init();
+
+    // Event Listeners
+    webUrlInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey && webUrlInput.value.trim()) {
+            handleSubmit();
+        }
+    });
+
+    summarizeButton.addEventListener('click', function() {
+        if (webUrlInput.value.trim()) {
+            handleSubmit();
+        }
+    });
+
+    newChatButton.addEventListener('click', function() {
+        createNewConversation();
+    });
+
+    aboutAiButton.addEventListener('click', function() {
+        toggleAboutAi();
+    });
+
+    themeToggle.addEventListener('click', function() {
+        toggleDarkMode();
+    });
+
+    homeButton.addEventListener('click', function() {
+        window.location.href = 'https://lintasai.com'; // Redirect to home page
+    });
+
+    renameCancel.addEventListener('click', function() {
+        hideRenameDialog();
+    });
+
+    renameConfirm.addEventListener('click', function() {
+        confirmRename();
+    });
+
+    sidebarToggle.addEventListener('click', function() {
+        toggleSidebar();
+    });
+
+    exampleCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const urlText = card.querySelector('p').textContent.replace(/"/g, '');
+            webUrlInput.value = urlText;
+            webUrlInput.focus();
+        });
+    });
+
+    // Functions
+    function init() {
+        // Initialize dark mode
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            darkIcon.style.display = 'none';
+            lightIcon.style.display = 'inline';
+            themeToggle.querySelector('span').textContent = 'Mode terang';
+        }
+
+        // Render conversation history
+        renderConversationHistory();
+
+        // Load conversation from URL parameter if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const conversationId = urlParams.get('id');
+
+        if (conversationId && conversations[conversationId]) {
+            loadConversation(conversationId);
+        } else {
+            showWelcomeMessage();
+        }
+
+        // Initialize sidebar state
+        initSidebar();
+    }
+
+    function initSidebar() {
+        const isSidebarHidden = localStorage.getItem('sidebarHidden') === 'true';
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile && localStorage.getItem('sidebarHidden') === null) {
+            sidebar.classList.add('sidebar-hidden');
+            menuIcon.style.display = 'inline';
+            closeIcon.style.display = 'none';
+            localStorage.setItem('sidebarHidden', 'true');
+        } else if (isSidebarHidden) {
+            sidebar.classList.add('sidebar-hidden');
+            menuIcon.style.display = 'inline';
+            closeIcon.style.display = 'none';
+        } else {
+            sidebar.classList.remove('sidebar-hidden');
+            menuIcon.style.display = 'none';
+            closeIcon.style.display = 'inline';
+        }
+    }
+
+    function toggleSidebar() {
+        const isHidden = sidebar.classList.toggle('sidebar-hidden');
+        localStorage.setItem('sidebarHidden', isHidden);
+
+        if (isHidden) {
+            menuIcon.style.display = 'inline';
+            closeIcon.style.display = 'none';
+        } else {
+            menuIcon.style.display = 'none';
+            closeIcon.style.display = 'inline';
+        }
+    }
+
+    function handleSubmit() {
+        const webUrl = webUrlInput.value.trim();
+        if (!webUrl) return;
+
+        // Create new conversation if none exists
+        if (!currentConversationId) {
+            createNewConversation();
+        }
+
+        // Add user message to UI
+        addMessageToUI('user', webUrl);
+
+        // Clear input
+        webUrlInput.value = '';
+
+        // Show loading indicator
+        loadingIndicator.style.display = 'block';
+        welcomeMessage.style.display = 'none';
+        aboutAiContent.style.display = 'none';
+        isAboutAiOpen = false;
+
+        // Call API
+        callSummarizeAPI(webUrl);
+    }
+
+    function callSummarizeAPI(webUrl) {
+        fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                web_url: webUrl
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.summary) {
+                addMessageToUI('ai', data.summary);
+            } else {
+                addMessageToUI('ai', `Maaf, gagal meringkas website: ${data.error || 'Tidak ada teks tersedia.'}`);
+            }
+        })
+        .catch(error => {
+            addMessageToUI('ai', 'Maaf, terjadi kesalahan dalam menghubungi layanan AI. Silakan periksa koneksi internet Anda dan coba lagi.');
+        })
+        .finally(() => {
+            loadingIndicator.style.display = 'none';
+            saveCurrentConversation();
+            updateConversationInHistory(currentConversationId);
+        });
+    }
+
+    function addMessageToUI(role, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message-wrapper ${role}-message`;
+
+        const timestamp = new Date();
+
+        // Add message to current conversation
+        if (currentConversationId) {
+            conversations[currentConversationId].messages.push({
+                role,
+                content,
+                timestamp
+            });
+        }
+
+        // Format content
+        let formattedContent = role === 'ai' ? formatAiResponse(content) : formatMessageContent(content);
+
+        messageDiv.innerHTML = `
+            <div class="message">
+                <div class="message-header">
+                    <div class="${role}-icon">
+                        ${role === 'ai' ? 
+                            `<svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+                            </svg>` : 
+                            `<svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                            </svg>`
+                        }
+                    </div>
+                    <span>${role === 'ai' ? 'AI' : 'Anda'}</span>
+                </div>
+                <div class="message-content">
+                    ${formattedContent}
+                </div>
+            </div>
+        `;
+
+        conversationContainer.appendChild(messageDiv);
+        conversationContainer.scrollTop = conversationContainer.scrollHeight;
+
+        // Add copy button functionality for AI messages
+        if (role === 'ai') {
+            const copyButtons = messageDiv.querySelectorAll('.copy-btn');
+            copyButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const copyId = this.getAttribute('data-copy-id');
+                    const copyEl = document.getElementById(copyId);
+                    if (copyEl) {
+                        navigator.clipboard.writeText(copyEl.value).then(() => {
+                            showNotification("✅ Disalin!");
+                        }).catch(() => {
+                            showNotification("❌ Gagal menyalin.");
+                        });
+                    }
+                });
+            });
+        }
+    }
+
+    function formatMessageContent(content) {
+        return escapeHtml(content).replace(/\n/g, '<br>');
+    }
+
+    function formatAiResponse(content) {
+        const uniqueId = Date.now() + Math.random().toString(36).substr(2, 5);
+        const formattedContent = parseMarkdown(escapeHtml(content));
+
+        return `
+        <div class="summary-section">
+            <strong>📝 Ringkasan:</strong>
+            <div class="summary-content">${formattedContent}</div>
+            <textarea id="copy-summary-${uniqueId}" style="display:none;">${content}</textarea>
+            <button class="copy-btn" data-copy-id="copy-summary-${uniqueId}">📋 Salin Ringkasan</button>
+        </div>
+        `;
+    }
+
+    function parseMarkdown(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^- (.*)$/gm, '<li>$1</li>')
+            .replace(/^(.*)$/gm, '<p>$1</p>')
+            .replace(/<p>- (.*?)<\/p>/g, '<li>$1</li>')
+            .replace(/<p>(.*?)<\/p>\n<li>(.*?)<\/li>/g, '<ul><li>$2</li></ul>')
+            .replace(/<p>\s*<\/p>/g, '');
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.remove();
+        }, 2000);
+    }
+
+    function createNewConversation() {
+        const id = 'conv_' + Date.now();
+        currentConversationId = id;
+
+        conversations[id] = {
+            id: id,
+            title: 'Rangkuman baru',
+            created: new Date(),
+            updated: new Date(),
+            messages: []
+        };
+
+        saveConversations();
+        renderConversationHistory();
+        conversationContainer.innerHTML = '';
+        welcomeMessage.style.display = 'none';
+        aboutAiContent.style.display = 'none';
+        isAboutAiOpen = false;
+        webUrlInput.focus();
+        updateURLWithConversationId(id);
+    }
+
+    function loadConversation(id) {
+        if (!conversations[id]) return;
+
+        currentConversationId = id;
+        conversationContainer.innerHTML = '';
+        welcomeMessage.style.display = 'none';
+        aboutAiContent.style.display = 'none';
+        isAboutAiOpen = false;
+
+        const convo = conversations[id];
+        convo.messages.forEach(msg => {
+            addMessageToUI(msg.role, msg.content);
+        });
+
+        updateSidebarActiveState();
+        updateURLWithConversationId(id);
+    }
+
+    function updateSidebarActiveState() {
+        const historyItems = document.querySelectorAll('.chat-history-item');
+        historyItems.forEach(item => {
+            item.classList.remove('active');
+        });
+
+        if (currentConversationId) {
+            const currentItem = document.querySelector(`.chat-history-item[data-id="${currentConversationId}"]`);
+            if (currentItem) {
+                currentItem.classList.add('active');
+            }
+        }
+    }
+
+    function renderConversationHistory() {
+        historyList.innerHTML = '';
+
+        const sortedConversations = Object.values(conversations).sort((a, b) => {
+            return new Date(b.updated) - new Date(a.updated);
+        });
+
+        sortedConversations.forEach(convo => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'chat-history-item';
+            historyItem.dataset.id = convo.id;
+            if (convo.id === currentConversationId) {
+                historyItem.classList.add('active');
+            }
+
+            historyItem.innerHTML = `
+                <div class="chat-icon">
+                    <svg xmlns="https://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6-.097 1.016-.417 2.13-.771 2.966-.079.186.074.394.273.362 2.256-.37 3.597-.938 4.18-1.234A9.06 9.06 0 0 0 8 15z"/>
+                    </svg>
+                </div>
+                <div class="chat-title">${convo.title}</div>
+                <div class="chat-actions">
+                    <button class="chat-action-button rename-chat" title="Ubah nama">
+                        <svg xmlns="https://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+                        </svg>
+                    </button>
+                    <button class="chat-action-button delete-chat" title="Hapus">
+                        <svg xmlns="https://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                            <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            historyItem.addEventListener('click', function(e) {
+                if (e.target.closest('.chat-action-button')) return;
+                loadConversation(convo.id);
+            });
+
+            const renameButton = historyItem.querySelector('.rename-chat');
+            renameButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                showRenameDialog(convo.id);
+            });
+
+            const deleteButton = historyItem.querySelector('.delete-chat');
+            deleteButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                deleteConversation(convo.id);
+            });
+
+            historyList.appendChild(historyItem);
+        });
+    }
+
+    function updateConversationInHistory(id) {
+        if (!conversations[id] || !conversations[id].messages.length) return;
+
+        // Update title based on first user message if still default
+        if (conversations[id].title === 'Rangkuman baru') {
+            const firstUserMessage = conversations[id].messages.find(msg => msg.role === 'user');
+            if (firstUserMessage) {
+                let title = firstUserMessage.content.trim();
+                if (title.length > 30) {
+                    title = title.substring(0, 30) + '...';
+                }
+                conversations[id].title = title;
+            }
+        }
+
+        // Update timestamp
+        conversations[id].updated = new Date();
+        saveConversations();
+        renderConversationHistory();
+    }
+
+    function deleteConversation(id) {
+        if (!confirm('Apakah Anda yakin ingin menghapus percakapan ini?')) {
+            return;
+        }
+
+        delete conversations[id];
+        saveConversations();
+        renderConversationHistory();
+
+        if (currentConversationId === id) {
+            currentConversationId = null;
+            showWelcomeMessage();
+        }
+    }
+
+    function showRenameDialog(id) {
+        currentRenameId = id;
+        renameInput.value = conversations[id].title;
+        renameDialog.style.display = 'flex';
+        setTimeout(() => {
+            renameInput.focus();
+        }, 100);
+    }
+
+    function hideRenameDialog() {
+        renameDialog.style.display = 'none';
+        currentRenameId = null;
+    }
+
+    function confirmRename() {
+        if (!currentRenameId) return;
+
+        const newTitle = renameInput.value.trim();
+        if (newTitle) {
+            conversations[currentRenameId].title = newTitle;
+            saveConversations();
+            renderConversationHistory();
+        }
+
+        hideRenameDialog();
+    }
+
+    function showWelcomeMessage() {
+        conversationContainer.innerHTML = '';
+        welcomeMessage.style.display = 'flex';
+        aboutAiContent.style.display = 'none';
+        isAboutAiOpen = false;
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    function toggleAboutAi() {
+        isAboutAiOpen = !isAboutAiOpen;
+
+        if (isAboutAiOpen) {
+            welcomeMessage.style.display = 'none';
+            conversationContainer.innerHTML = '';
+            currentConversationId = null;
+            aboutAiContent.style.display = 'block';
+            conversationContainer.appendChild(aboutAiContent);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            aboutAiContent.style.display = 'none';
+            showWelcomeMessage();
+        }
+
+        updateSidebarActiveState();
+    }
+
+    function toggleDarkMode() {
+        const isDarkMode = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', isDarkMode);
+
+        if (isDarkMode) {
+            darkIcon.style.display = 'none';
+            lightIcon.style.display = 'inline';
+            themeToggle.querySelector('span').textContent = 'Mode terang';
+        } else {
+            darkIcon.style.display = 'inline';
+            lightIcon.style.display = 'none';
+            themeToggle.querySelector('span').textContent = 'Mode gelap';
+        }
+    }
+
+    function loadConversations() {
+        const stored = localStorage.getItem('conversations');
+        return stored ? JSON.parse(stored) : {};
+    }
+
+    function saveConversations() {
+        localStorage.setItem('conversations', JSON.stringify(conversations));
+    }
+
+    function saveCurrentConversation() {
+        if (currentConversationId && conversations[currentConversationId]) {
+            conversations[currentConversationId].updated = new Date();
+            saveConversations();
+        }
+    }
+
+    function updateURLWithConversationId(id) {
+        const url = new URL(window.location);
+        url.searchParams.set('id', id);
+        window.history.replaceState({}, document.title, url);
+    }
+});
+</script>
+</body>
+</html>
