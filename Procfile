@@ -1,1 +1,1 @@
-web: uvicorn web-summarize:app --host 0.0.0.0 --port $PORT
+web: gunicorn web_api:app --bind 0.0.0.0:$PORT

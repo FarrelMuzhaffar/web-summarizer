@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
 import requests
@@ -11,14 +11,19 @@ import re
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Setup Flask
+# Inisialisasi Flask
 app = Flask(__name__)
-CORS(app, resources={r"/summarize": {"origins": ["https://lintasai.com"]}})
+CORS(app, resources={r"/*": {"origins": ["https://*.up.railway.app", "https://lintasai.com"]}})
 
 # Load API Key dari .env
 load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
-logger.info(f"API Key loaded: {'[REDACTED]' if api_key else 'None'}")  # Log tanpa menampilkan API Key
+logger.info(f"API Key loaded: {'[REDACTED]' if api_key else 'None'}")
+
+# Fungsi validasi URL
+def is_valid_url(url):
+    pattern = r'^(https?:\/\/)?([\w\-]+(\.[\w\-]+)+[\/]?.*)$'
+    return re.match(pattern, url) is not None
 
 # Fungsi ekstrak teks dari website
 def extract_text_from_url(url):
@@ -30,16 +35,11 @@ def extract_text_from_url(url):
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
-        
-        # Hapus elemen yang tidak diinginkan (script, style, dll.)
         for element in soup(["script", "style", "nav", "footer", "header"]):
             element.decompose()
 
-        # Ambil teks dari elemen utama (p, h1-h6, dll.)
         text_elements = soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"])
         content = " ".join([elem.get_text(strip=True) for elem in text_elements])
-
-        # Bersihkan teks (hapus karakter berulang, spasi berlebih)
         content = re.sub(r'\s+', ' ', content).strip()
 
         if not content:
@@ -51,22 +51,16 @@ def extract_text_from_url(url):
         logger.error(f"Gagal mengekstrak teks dari URL: {str(e)}")
         return None
 
-# Fungsi validasi URL
-def is_valid_url(url):
-    pattern = r'^(https?:\/\/)?([\w\-]+(\.[\w\-]+)+[\/]?.*)$'
-    return re.match(pattern, url) is not None
-
-@app.route("/", methods=["GET"])
+# Route untuk menyajikan halaman utama
+@app.route('/')
 def home():
-    return "Web Summarizer API is running 🚀", 200
+    return send_file('web-summarize-ai.html')
 
-@app.route("/summarize", methods=["POST", "OPTIONS"])
+# Route untuk ringkasan
+@app.post('/summarize')
 def summarize():
-    if request.method == "OPTIONS":
-        return '', 200
-
     try:
-        data = request.get_json(force=True)
+        data = request.get_json()
         logger.info(f"Data diterima: {data}")
 
         if not data or "web_url" not in data:
@@ -105,7 +99,7 @@ def summarize():
         }
 
         payload = {
-            "model": "microsoft/phi-4-reasoning-plus:free",
+            "model": "deepseek/deepseek-chat-v3-0324:free",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant that summarizes website content."},
                 {"role": "user", "content": prompt}
@@ -117,11 +111,7 @@ def summarize():
 
         if response.status_code != 200:
             logger.error(f"Error dari OpenRouter: {response.status_code} - {response.text}")
-            return jsonify({
-                "error": "Gagal meringkas website",
-                "details": response.text,
-                "status_code": response.status_code
-            }), 500
+            return jsonify({"error": "Gagal meringkas website", "details": response.text}), 500
 
         try:
             result = response.json()
@@ -129,14 +119,11 @@ def summarize():
             return jsonify({"summary": summary})
         except Exception as e:
             logger.error(f"Gagal parsing JSON dari OpenRouter: {str(e)}")
-            return jsonify({"error": "Gagal membaca respons dari OpenRouter", "details": str(e)}), 500
+            return jsonify({"error": f"Gagal membaca respons dari OpenRouter: {str(e)}"}), 500
 
     except Exception as e:
         logger.error(f"Terjadi exception fatal: {str(e)}")
-        return jsonify({"error": "Terjadi error internal", "details": str(e)}), 500
+        return jsonify({"error": f"Terjadi error internal: {str(e)}"}), 500
 
-# Jalankan aplikasi Flask di Railway
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    logger.info(f"Running on port: {port}")
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8000)))
