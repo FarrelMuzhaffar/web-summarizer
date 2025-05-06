@@ -127,7 +127,7 @@ def summarize():
         }
 
         payload = {
-            "model": "microsoft/phi-4-reasoning-plus:free",
+            "model": "google/gemini-2.0-flash-exp:free",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant that summarizes website content."},
                 {"role": "user", "content": prompt}
