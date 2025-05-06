@@ -105,7 +105,7 @@ def summarize():
         }
 
         payload = {
-            "model": "deepseek/deepseek-chat-v3-0324:free",
+            "model": "microsoft/phi-4-reasoning-plus:free",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant that summarizes website content."},
                 {"role": "user", "content": prompt}
